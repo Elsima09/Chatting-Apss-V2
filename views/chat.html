@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhatsApp Clone</title>
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Arial;
+        }
+
+        body{
+            background:#d1d7db;
+            height:100vh;
+        }
+
+        .container{
+            display:flex;
+            height:100vh;
+        }
+
+        /* Sidebar */
+        .sidebar{
+            width:30%;
+            background:white;
+            border-right:1px solid #ccc;
+            display:flex;
+            flex-direction:column;
+        }
+
+        .profile{
+            background:#00a884;
+            color:white;
+            padding:20px;
+            font-size:20px;
+            font-weight:bold;
+        }
+
+        .search{
+            padding:10px;
+            border-bottom:1px solid #ddd;
+        }
+
+        .search input{
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:8px;
+        }
+
+        .contact-list{
+            flex:1;
+            overflow-y:auto;
+        }
+
+        .contact{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:15px;
+    border-bottom:1px solid #eee;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.contact:hover{
+    background:#f0f2f5;
+}
+
+.contact.active{
+    background:#d9fdd3;
+}
+
+        /* Chat Area */
+        .chat-area{
+            width:70%;
+            display:flex;
+            flex-direction:column;
+        }
+
+        .chat-header{
+    display:flex;
+    align-items:center;
+    gap:15px;
+    background:#f0f2f5;
+    padding:15px 20px;
+    border-bottom:1px solid #ccc;
+}
+
+.chat-info{
+    display:flex;
+    flex-direction:column;
+}
+
+.status{
+    font-size:12px;
+    color:green;
+}
+
+        #messages{
+    flex:1;
+    padding:20px;
+    background-image:
+    radial-gradient(circle at 1px 1px, #dfe5e7 1px, transparent 0);
+    background-size:20px 20px;
+    overflow-y:auto;
+}
+
+        .message{
+    padding:12px 14px;
+    margin:10px 0;
+    border-radius:14px 14px 14px 4px;
+    width:fit-content;
+    max-width:60%;
+    background:white;
+    box-shadow:0 1px 3px rgba(0,0,0,0.15);
+}
+
+        .me{
+            margin-left:auto;
+            background:#d9fdd3;
+            border-radius:14px 14px 4px 14px;
+        }
+
+        .time{
+    font-size:11px;
+    color:gray;
+    margin-top:4px;
+    text-align:right;
+}
+
+.tick{
+    color: gray;
+    font-weight: bold;
+}
+.read{
+    color:#53bdeb;
+    font-weight:bold;
+}
+
+        .input-area{
+            display:flex;
+            padding:15px;
+            background:#f0f2f5;
+            gap:10px;
+        }
+
+        .input-area input{
+            flex:1;
+            padding:12px;
+            border:none;
+            border-radius:8px;
+        }
+
+        .input-area button{
+            padding:12px 20px;
+            border:none;
+            background:#00a884;
+            color:white;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        .avatar{
+    width:45px;
+    height:45px;
+    min-width:45px;
+    min-height:45px;
+    flex-shrink:0;
+
+    border-radius:50%;
+    background:#00a884;
+    color:white;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:bold;
+    font-size:20px;
+}
+
+.contact{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.badge{
+    min-width:22px;
+    height:22px;
+    border-radius:50%;
+    background:#25d366;
+    color:white;
+    font-size:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:bold;
+}
+
+.emoji{
+    font-size:28px;
+    cursor:pointer;
+    margin:4px;
+}
+
+.emoji:hover{
+    transform:scale(1.2);
+}
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="profile" id="myName">User</div>
+
+        <div class="search">
+            <input placeholder="Search contact...">
+        </div>
+
+        <div class="contact-list" id="contactList"></div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-area">
+        <div class="chat-header">
+    <div class="avatar" id="chatAvatar">?</div>
+
+    <div class="chat-info">
+        <div id="chatHeader">Pilih kontak</div>
+        <div class="status">Pilih kontak dulu</div>
+    </div>
+</div>
+
+        <div id="messages"></div>
+        <div id="typingStatus"
+     style="padding-left:20px; font-size:13px; color:gray; height:20px;">
+</div>
+<div id="replyBox" style="
+    display:none;
+    background:#e9edef;
+    padding:10px 15px;
+    border-left:4px solid #00a884;
+">
+    <div id="replyText"></div>
+    <button onclick="cancelReply()" style="float:right">X</button>
+</div>
+        <div class="input-area">
+    <input type="file" id="imageInput" accept="image/*" hidden>
+
+    <button onclick="document.getElementById('imageInput').click()">
+        📎
+    </button>
+     <button id="emojiBtn">😊</button>
+
+
+    <input id="message" placeholder="Ketik pesan...">
+    <button id="recordBtn">🎤</button>
+
+    <button onclick="sendMessage()">Kirim</button>
+</div>
+    </div>
+</div>
+<div id="emojiPicker" style="
+    display:none;
+    position:absolute;
+    bottom:80px;
+    left:350px;
+    background:white;
+    border:1px solid #ccc;
+    border-radius:12px;
+    padding:10px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.2);
+    z-index:999;
+">
+    <span class="emoji">😀</span>
+    <span class="emoji">😂</span>
+    <span class="emoji">😍</span>
+    <span class="emoji">😭</span>
+    <span class="emoji">❤️</span>
+    <span class="emoji">🔥</span>
+    <span class="emoji">👍</span>
+    <span class="emoji">🎉</span>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    document.getElementById('recordBtn')
+.addEventListener('click', async function () {
+
+    if (!selectedUser) {
+        alert("Pilih kontak dulu");
+        return;
+    }
+
+    if (!isRecording) {
+        const stream =
+            await navigator.mediaDevices.getUserMedia({
+                audio: true
+            });
+
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = e => {
+            audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob =
+                new Blob(audioChunks, { type: 'audio/webm' });
+
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'voice.webm');
+
+            const res = await fetch('/upload-audio', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                socket.emit('send_message', {
+                    sender: myUsername,
+                    receiver: selectedUser,
+                    message: `[audio]${data.audioUrl}`
+                });
+            }
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        this.innerText = "⏹";
+    } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        this.innerText = "🎤";
+    }
+});
+    document.addEventListener('dblclick', async function(e) {
+let bubble = e.target;
+
+while (bubble && !bubble.classList?.contains('message')) {
+    bubble = bubble.parentElement;
+}
+    if (!bubble) return;
+    if (!bubble.classList.contains('me')) {
+    alert('Hanya bisa hapus pesan sendiri');
+    return;
+}
+
+    const messageId = bubble.dataset.messageId;
+    if (!messageId) return;
+
+    if (!confirm('Hapus pesan ini?')) return;
+
+    const res = await fetch(`/delete-message/${messageId}`, {
+        method: 'DELETE'
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        bubble.remove();
+    }
+});
+const socket = io();
+const emojiBtn = document.getElementById('emojiBtn');
+const emojiPicker = document.getElementById('emojiPicker');
+const messageInput = document.getElementById('message');
+messageInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+let selectedUser = null;
+let replyMessage = null;
+let currentOnlineUsers = [];
+let unreadCounts = {};
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+const myUsername = localStorage.getItem('username');
+
+// cek user login
+if (!myUsername) {
+    alert("Silakan login dulu");
+    window.location.href = "/";
+}
+
+// register socket user
+socket.emit('register_socket', myUsername);
+
+// tampilkan nama sendiri
+document.getElementById('myName').innerText = myUsername;
+
+// ambil daftar user dari database
+fetch('/users')
+.then(res => res.json())
+.then(users => {
+    const contactList = document.getElementById('contactList');
+
+    users.forEach(user => {
+        if (user.username !== myUsername) {
+            const div = document.createElement('div');
+            div.className = 'contact';
+
+            div.innerHTML = `
+                <div class="avatar">${user.username[0].toUpperCase()}</div>
+                <div style="flex:1">
+                    <div>${user.username}</div>
+                    <small id="preview-${user.username}" style="color:gray">
+                        Belum ada chat
+                    </small>
+                </div>
+                <div id="badge-${user.username}" class="badge" style="display:none">
+                    0
+                </div>
+            `;
+
+            div.onclick = () => {
+                document.querySelectorAll('.contact')
+                    .forEach(c => c.classList.remove('active'));
+
+                div.classList.add('active');
+                selectedUser = user.username;
+                const status = document.querySelector('.status');
+
+if (currentOnlineUsers.includes(selectedUser)) {
+    status.innerText = "Online";
+    status.style.color = "green";
+} else {
+    fetch(`/last-seen/${selectedUser}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.last_seen) {
+            const date = new Date(data.last_seen);
+            const time =
+                date.getHours() + ":" +
+                String(date.getMinutes()).padStart(2, '0');
+
+            status.innerText = "last seen " + time;
+        } else {
+            status.innerText = "Offline";
+        }
+
+        status.style.color = "gray";
+    });
+}
+
+                document.getElementById('chatHeader').innerText = user.username;
+                document.getElementById('chatAvatar').innerText =
+                    user.username[0].toUpperCase();
+
+                document.getElementById('messages').innerHTML = '';
+
+                setTimeout(() => {
+    unreadCounts[user.username] = 0;
+    const badge = document.getElementById(`badge-${user.username}`);
+    if (badge) badge.style.display = 'none';
+}, 300);
+
+                socket.emit('open_chat', {
+                    username: myUsername,
+                    chattingWith: selectedUser
+                });
+
+                fetch(`/messages/${myUsername}/${selectedUser}`)
+                .then(res => res.json())
+                .then(messages => {
+                    messages.forEach(msg => {
+                        const box = document.getElementById('messages');
+box.scrollTop = box.scrollHeight;
+                        const msgDiv = document.createElement('div');
+                        msgDiv.classList.add('message');
+                        msgDiv.dataset.messageId = msg.id;
+
+                        if (msg.sender === myUsername) {
+                            msgDiv.classList.add('me');
+                        }
+
+                        let ticks = '';
+                        if (msg.sender === myUsername) {
+                            if (msg.status === 'read') {
+                                ticks = `<span class="tick read">✔✔</span>`;
+                            } else if (msg.status === 'delivered') {
+                                ticks = `<span class="tick">✔✔</span>`;
+                            } else {
+                                ticks = `<span class="tick">✔</span>`;
+                            }
+                        }
+
+                        let messageContent = msg.message;
+
+if (msg.message.startsWith('[image]')) {
+    const imageUrl = msg.message.replace('[image]', '');
+    messageContent = `
+        <img src="${imageUrl}"
+             style="max-width:200px;border-radius:10px;">
+    `;
+}
+else if (msg.message.startsWith('[audio]')) {
+    const audioUrl = msg.message.replace('[audio]', '');
+    messageContent = `
+        <audio controls>
+            <source src="${audioUrl}" type="audio/webm">
+        </audio>
+    `;
+}
+
+msgDiv.innerHTML = `
+    <b>${msg.sender}</b><br>
+    ${messageContent}
+    <div class="time">
+        ${msg.sender === myUsername ? ticks : ''}
+    </div>
+`;
+msgDiv.onclick = function() {
+    replyMessage = msg.message;
+
+    document.getElementById('replyBox').style.display = 'block';
+    document.getElementById('replyText').innerText =
+        "Reply: " + msg.message;
+};
+                        document.getElementById('messages')
+                            .appendChild(msgDiv);
+                    });
+                });
+            };
+
+            contactList.appendChild(div);
+        }
+    });
+
+    emojiBtn.addEventListener('click', function() {
+    if (emojiPicker.style.display === 'none' || emojiPicker.style.display === '') {
+        emojiPicker.style.display = 'block';
+    } else {
+        emojiPicker.style.display = 'none';
+    }
+});
+
+    // LOAD LAST MESSAGE
+    fetch(`/last-messages/${myUsername}`)
+.then(res => res.json())
+.then(lastMessages => {
+    lastMessages.forEach(msg => {xxx 
+        const otherUser =
+            msg.sender === myUsername
+            ? msg.receiver
+            : msg.sender;
+
+        const preview =
+            document.getElementById(`preview-${otherUser}`);
+
+        if (preview) {
+            if (msg.message.startsWith('[image]')) {
+                preview.innerText = "📷 Photo";
+            } else {
+                preview.innerText = msg.message;
+            }
+        }
+    });
+});
+
+    // LOAD UNREAD
+    fetch(`/unread/${myUsername}`)
+    .then(res => res.json())
+    .then(unreads => {
+        unreads.forEach(item => {
+            unreadCounts[item.sender] = item.total;
+
+            const badge =
+                document.getElementById(`badge-${item.sender}`);
+
+            if (badge) {
+                badge.style.display = 'flex';
+                badge.innerText = item.total;
+            }
+        });
+    });
+});
+
+document.getElementById('message')
+.addEventListener('input', function() {
+
+    if (!selectedUser) return;
+
+    socket.emit('typing', {
+        sender: myUsername,
+        receiver: selectedUser
+    });
+});
+
+document.getElementById('message')
+.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+function cancelReply() {
+    replyMessage = null;
+    document.getElementById('replyBox').style.display = 'none';
+}
+// kirim pesan
+function sendMessage() {
+    let msg = document.getElementById('message').value.trim();
+
+
+    if (!selectedUser) {
+        alert("Pilih kontak dulu");
+        return;
+    }
+
+    if (msg === '') return;
+
+    socket.emit('send_message', {
+        sender: myUsername,
+        receiver: selectedUser,
+        message: replyMessage
+    ? `[reply]${replyMessage}[/reply]${msg}`
+    : msg
+    });
+
+    document.getElementById('message').value = '';
+    cancelReply();
+    document.getElementById('typingStatus').innerText = '';
+}
+
+// receive private message
+socket.on('online_users', (users) => {
+    currentOnlineUsers = users;
+
+    if (selectedUser) {
+        const status = document.querySelector('.status');
+
+        if (users.includes(selectedUser)) {
+            status.innerText = "Online";
+            status.style.color = "green";
+        }else {
+    fetch(`/last-seen/${selectedUser}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.last_seen) {
+            const date = new Date(data.last_seen);
+            const time =
+                date.getHours() + ":" +
+                String(date.getMinutes()).padStart(2, '0');
+
+            status.innerText = "last seen " + time;
+        } else {
+            status.innerText = "Offline";
+        }
+
+        status.style.color = "gray";
+    });
+}
+    }
+});
+
+document.getElementById('imageInput')
+.addEventListener('change', async function () {
+
+    if (!selectedUser) {
+        alert("Pilih kontak dulu");
+        return;
+    }
+
+    const file = this.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const res = await fetch('/upload-image', {
+        method: 'POST',
+        body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        socket.emit('send_message', {
+            sender: myUsername,
+            receiver: selectedUser,
+            message: `[image]${data.imageUrl}`
+        });
+    }
+
+    this.value = '';
+});
+socket.on('receive_message', function(data) {
+    console.log("MESSAGE:", data);
+
+    const otherUser =
+        data.sender === myUsername
+        ? data.receiver
+        : data.sender;
+
+    // update preview SELALU
+    const preview =
+    document.getElementById(`preview-${otherUser}`);
+
+if (preview) {
+    if (data.message.startsWith('[image]')) {
+        preview.innerText = "📷 Photo";
+     }
+else if (data.message.startsWith('[audio]')) {
+    preview.innerText = "🎤 Voice Note";   
+    } else {
+        preview.innerText = data.message;
+    }
+}
+
+    // kalau pesan dari user lain & room belum dibuka
+    if (
+        data.sender !== myUsername &&
+        selectedUser !== data.sender
+    ) {
+        unreadCounts[data.sender] =
+            (unreadCounts[data.sender] || 0) + 1;
+
+        const badge =
+            document.getElementById(`badge-${data.sender}`);
+
+        if (badge) {
+            badge.style.display = "flex";
+            badge.innerText = unreadCounts[data.sender];
+        }
+
+        return;
+    }
+
+    // kalau bukan chat aktif skip render message
+    if (
+        !(
+            (data.sender === myUsername &&
+             data.receiver === selectedUser) ||
+            (data.sender === selectedUser &&
+             data.receiver === myUsername)
+        )
+    ) {
+        return;
+    }
+
+    const div = document.createElement('div');
+    div.classList.add('message');
+    if (data.id) {
+    div.dataset.messageId = data.id;
+}
+
+    if (data.sender === myUsername) {
+        div.classList.add('me');
+    }
+
+    let ticks = '';
+
+    if (data.sender === myUsername) {
+        if (data.status === 'read') {
+            ticks = `<span class="tick read">✔✔</span>`;
+        } else if (data.status === 'delivered') {
+            ticks = `<span class="tick">✔✔</span>`;
+        } else {
+            ticks = `<span class="tick">✔</span>`;
+        }
+    }
+
+    let messageContent = data.message;
+
+if (data.message.startsWith('[image]')) {
+    const imageUrl = data.message.replace('[image]', '');
+    messageContent = `
+        <img src="${imageUrl}"
+             style="max-width:200px;border-radius:10px;">
+    `;
+}
+else if (data.message.startsWith('[audio]')) {
+    const audioUrl = data.message.replace('[audio]', '');
+    messageContent = `
+        <audio controls>
+            <source src="${audioUrl}" type="audio/webm">
+        </audio>
+    `;
+}
+
+div.innerHTML = `
+    <b>${data.sender}</b><br>
+    ${messageContent}
+    <div class="time">
+        ${ticks}
+    </div>
+`;
+div.onclick = function() {
+    replyMessage = data.message;
+
+    document.getElementById('replyBox').style.display = 'block';
+    document.getElementById('replyText').innerText =
+        "Reply: " + data.message;
+};
+    document.getElementById('messages').appendChild(div);
+
+    const messages = document.getElementById('messages');
+    messages.scrollTop = messages.scrollHeight;
+});
+let typingTimeout;
+
+socket.on('messages_read', (data) => {
+    console.log("READ BY:", data.reader);
+
+    document.querySelectorAll('.message.me .tick')
+        .forEach(tick => {
+            tick.classList.add('read');
+        });
+});
+
+socket.on('message_deleted', (data) => {
+    document.querySelectorAll('.message').forEach(msg => {
+        if (msg.dataset.messageId == data.id) {
+            msg.remove();
+        }
+    });
+});
+
+document.querySelectorAll('.emoji').forEach(emoji => {
+    emoji.addEventListener('click', function() {
+        messageInput.value += this.innerText;
+        messageInput.focus();
+    });
+});
+
+document.addEventListener('click', function(e) {
+    if (
+        !emojiPicker.contains(e.target) &&
+        e.target !== emojiBtn
+    ) {
+        emojiPicker.style.display = 'none';
+    }
+});
+socket.on('show_typing', (data) => {
+
+    // hanya tampil kalau sender adalah kontak yang sedang dibuka
+    if (data.sender !== selectedUser) return;
+
+    const typingStatus = document.getElementById('typingStatus');
+
+    typingStatus.innerText = `${data.sender} sedang mengetik...`;
+
+    clearTimeout(typingTimeout);
+
+    typingTimeout = setTimeout(() => {
+        typingStatus.innerText = '';
+    }, 1500);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <style>
+        body{
+            margin:0;
+            font-family:Arial;
+            background:#d9dbd5;
+        }
+
+        .top{
+            height:140px;
+            background:#00a884;
+        }
+
+        .card{
+            width:400px;
+            background:white;
+            margin:-70px auto;
+            padding:40px;
+            border-radius:10px;
+            box-shadow:0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        input{
+            width:100%;
+            padding:12px;
+            margin:10px 0;
+            box-sizing:border-box;
+        }
+
+        button{
+            width:100%;
+            padding:12px;
+            background:#00a884;
+            color:white;
+            border:none;
+            cursor:pointer;
+            border-radius:5px;
+        }
+
+        a{
+            color:#00a884;
+            text-decoration:none;
+        }
+    </style>
+</head>
+<body>
+    <div class="top"></div>
+
+    <div class="card">
+        <h2>Register Chat App</h2>
+
+        <input id="username" placeholder="Username">
+        <input id="password" type="password" placeholder="Password">
+
+        <button onclick="register()">Register</button>
+
+        <p>Sudah punya akun? <a href="/">Login</a></p>
+    </div>
+
+    <script>
+        async function register(){
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const res = await fetch('/register',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({username,password})
+            });
+
+            const data = await res.json();
+            alert(data.message);
+
+            if(data.success){
+                window.location.href='/';
+            }
+        }
+    </script>
+</body>
+</html>
