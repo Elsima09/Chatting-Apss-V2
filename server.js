@@ -90,34 +90,35 @@ app.get('/last-messages/:me', (req, res) => {
     const me = req.params.me;
 
     db.query(`
-        SELECT m1.*
-        FROM messages m1
-        INNER JOIN (
-            SELECT
-                CASE
-                    WHEN sender = ? THEN receiver
-                    ELSE sender
-                END as chat_user,
-                MAX(id) as latest_id
-            FROM messages
-            WHERE sender = ? OR receiver = ?
-            GROUP BY chat_user
-        ) m2
-        ON (
-            (
-                (m1.sender = ? AND m1.receiver = m2.chat_user)
-                OR
-                (m1.receiver = ? AND m1.sender = m2.chat_user)
-            )
-            AND m1.id = m2.latest_id
+    SELECT m1.*
+    FROM messages m1
+    INNER JOIN (
+        SELECT
+            CASE
+                WHEN sender = ? THEN receiver
+                ELSE sender
+            END as chat_user,
+            MAX(id) as latest_id
+        FROM messages
+        WHERE sender = ? OR receiver = ?
+        GROUP BY chat_user
+    ) m2
+    ON (
+        (
+            (m1.sender = ? AND m1.receiver = m2.chat_user)
+            OR
+            (m1.receiver = ? AND m1.sender = m2.chat_user)
         )
-    `, [me, me, me, me, me], (err, result) => {
-        if (err) {
-            console.log(err);
-            return res.json([]);
-        }
-        res.json(result);
-    });
+        AND m1.id = m2.latest_id
+    )
+    ORDER BY m1.created_at DESC
+`, [me, me, me, me, me], (err, result) => {
+    if (err) {
+        console.log("SQL ERROR:", err);
+        return res.json([]);
+    }
+    res.json(result);
+});
 });
 
 app.get('/unread/:me', (req, res) => {
@@ -313,6 +314,43 @@ socket.on('typing', (data) => {
             }
         }
     );
+});
+socket.on('send_reaction', (data) => {
+    io.emit('receive_reaction', data);
+});
+
+socket.on('call_user', (data) => {
+    console.log("SERVER TERIMA CALL:", data);
+
+    const receiverSocket = onlineUsers[data.receiver];
+
+    console.log("SOCKET TUJUAN:", receiverSocket);
+
+    if (receiverSocket) {
+        io.to(receiverSocket).emit('incoming_call', {
+            caller: data.caller
+        });
+    }
+});
+
+socket.on('accept_call', (data) => {
+    console.log("ACCEPT CALL:", data);
+
+    const callerSocket = onlineUsers[data.caller];
+    console.log("CALLER SOCKET:", callerSocket);
+
+    if (callerSocket) {
+        io.to(callerSocket).emit('call_accepted');
+        console.log("CALL ACCEPTED DIKIRIM");
+    }
+});
+
+socket.on('end_call', (data) => {
+    const receiverSocket = onlineUsers[data.receiver];
+
+    if (receiverSocket) {
+        io.to(receiverSocket).emit('call_ended');
+    }
 });
 
     socket.on('disconnect', () => {

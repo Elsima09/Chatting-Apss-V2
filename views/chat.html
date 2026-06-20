@@ -207,6 +207,101 @@
 .emoji:hover{
     transform:scale(1.2);
 }
+
+.message {
+    position: relative;
+    z-index: 1;
+}
+
+.msg-menu-btn {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    display: none;
+}
+
+.message:hover .msg-menu-btn {
+    display: block;
+}
+
+.msg-menu {
+    position: absolute;
+    top: 25px;
+    right: 5px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+    z-index: 999;
+    overflow: hidden;
+}
+
+.msg-menu div {
+    padding: 10px 15px;
+    cursor: pointer;
+}
+
+.msg-menu div:hover {
+    background: #f0f0f0;
+}
+.emoji-picker-open #messages {
+    pointer-events: none;
+}
+#callBtn{
+    margin-left:auto;
+    padding:10px 16px;
+    border:none;
+    border-radius:10px;
+    background:#00a884;
+    color:white;
+    cursor:pointer;
+    font-size:16px;
+}
+
+#callBtn:hover{
+    opacity:0.9;
+}
+#callPopup{
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    z-index: 999999;
+    text-align: center;
+}
+.accept-btn{
+    background: #25D366;
+    border: none;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 28px;
+    cursor: pointer;
+    margin-right: 12px;
+}
+
+.accept-btn:hover{
+    transform: scale(1.08);
+}
+
+.end-btn{
+    background: #ff3b30;
+    border: none;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+.end-btn:hover{
+    transform: scale(1.08);
+}
     </style>
 </head>
 <body>
@@ -217,7 +312,7 @@
         <div class="profile" id="myName">User</div>
 
         <div class="search">
-            <input placeholder="Search contact...">
+            <input id="searchContact" placeholder="Search contact...">
         </div>
 
         <div class="contact-list" id="contactList"></div>
@@ -232,6 +327,7 @@
         <div id="chatHeader">Pilih kontak</div>
         <div class="status">Pilih kontak dulu</div>
     </div>
+    <button id="callBtn">📞 Call</button>
 </div>
 
         <div id="messages"></div>
@@ -273,7 +369,8 @@
     border-radius:12px;
     padding:10px;
     box-shadow:0 2px 10px rgba(0,0,0,0.2);
-    z-index:999;
+    z-index:999999;
+pointer-events:auto;
 ">
     <span class="emoji">😀</span>
     <span class="emoji">😂</span>
@@ -285,6 +382,18 @@
     <span class="emoji">🎉</span>
 </div>
 
+<div id="callPopup" style="display:none;">
+    <h2 id="callText">Calling...</h2>
+    <p id="callTimer">00:00</p>
+
+    <button id="acceptCallBtn" onclick="acceptCall()" class="accept-btn">
+        📞
+    </button>
+
+    <button onclick="endCall()" class="end-btn">
+        📵
+    </button>
+</div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
     document.getElementById('recordBtn')
@@ -368,22 +477,81 @@ while (bubble && !bubble.classList?.contains('message')) {
     }
 });
 const socket = io();
+socket.on('incoming_call', (data) => {
+    console.log("TELP MASUK DARI:", data.caller);
+
+    window.currentCaller = data.caller;
+
+    callPopup.style.display = 'block';
+    callText.innerText = `${data.caller} is calling...`;
+
+    const acceptBtn = document.getElementById('acceptCallBtn');
+    if (acceptBtn) {
+        acceptBtn.style.display = 'inline-block';
+    }
+});
+const searchContact = document.getElementById('searchContact');
+
+searchContact.addEventListener('input', function() {
+    const keyword = this.value.toLowerCase();
+    const contacts = document.querySelectorAll('.contact');
+
+    contacts.forEach(contact => {
+        const username =
+            contact.dataset.username.toLowerCase();
+
+        if (username.includes(keyword)) {
+            contact.style.display = 'flex';
+        } else {
+            contact.style.display = 'none';
+        }
+    });
+});
+const callBtn = document.getElementById('callBtn');
+const callPopup = document.getElementById('callPopup');
+const callText = document.getElementById('callText');
+callBtn.addEventListener('click', function () {
+    if (!selectedUser) {
+        alert('Pilih kontak dulu');
+        return;
+    }
+
+    const acceptBtn = document.getElementById('acceptCallBtn');
+    acceptBtn.style.display = 'none'; // <-- TAMBAHAN
+
+    callText.innerText = `Calling ${selectedUser}...`;
+    callPopup.style.display = 'block';
+
+    socket.emit('call_user', {
+        caller: myUsername,
+        receiver: selectedUser
+    });
+});
 const emojiBtn = document.getElementById('emojiBtn');
 const emojiPicker = document.getElementById('emojiPicker');
 const messageInput = document.getElementById('message');
+document.querySelectorAll('#emojiPicker .emoji')
+.forEach(el => {
+    el.addEventListener('click', function() {
+        messageInput.value += this.innerText;
+        emojiPicker.style.display = 'none';
+        document.body.classList.remove('emoji-picker-open');
+    });
+});
 messageInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         sendMessage();
     }
 });
 let selectedUser = null;
-let replyMessage = null;
+let replyData = null;
 let currentOnlineUsers = [];
 let unreadCounts = {};
 let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
 const myUsername = localStorage.getItem('username');
+console.log("USERNAME LOGIN:", myUsername);
 
 // cek user login
 if (!myUsername) {
@@ -392,6 +560,7 @@ if (!myUsername) {
 }
 
 // register socket user
+console.log("REGISTER SOCKET:", myUsername);
 socket.emit('register_socket', myUsername);
 
 // tampilkan nama sendiri
@@ -407,6 +576,7 @@ fetch('/users')
         if (user.username !== myUsername) {
             const div = document.createElement('div');
             div.className = 'contact';
+div.dataset.username = user.username;
 
             div.innerHTML = `
                 <div class="avatar">${user.username[0].toUpperCase()}</div>
@@ -494,16 +664,40 @@ box.scrollTop = box.scrollHeight;
                         }
 
                         let messageContent = msg.message;
+let replyHtml = '';
 
-if (msg.message.startsWith('[image]')) {
-    const imageUrl = msg.message.replace('[image]', '');
+// cek reply
+const replyMatch = messageContent.match(/\[reply\](.*?)\[\/reply\]/);
+
+if (replyMatch) {
+    replyHtml = `
+        <div style="
+            background:#e9edef;
+            padding:5px;
+            border-left:4px solid #00a884;
+            margin-bottom:5px;
+            border-radius:5px;
+            font-size:12px;
+        ">
+            ${replyMatch[1]}
+        </div>
+    `;
+
+    messageContent =
+        messageContent.replace(/\[reply\].*?\[\/reply\]/, '');
+}
+
+// image
+if (messageContent.startsWith('[image]')) {
+    const imageUrl = messageContent.replace('[image]', '');
     messageContent = `
-        <img src="${imageUrl}"
-             style="max-width:200px;border-radius:10px;">
+        <img src="${imageUrl}" style="max-width:200px;border-radius:10px;">
     `;
 }
-else if (msg.message.startsWith('[audio]')) {
-    const audioUrl = msg.message.replace('[audio]', '');
+
+// audio
+else if (messageContent.startsWith('[audio]')) {
+    const audioUrl = messageContent.replace('[audio]', '');
     messageContent = `
         <audio controls>
             <source src="${audioUrl}" type="audio/webm">
@@ -512,19 +706,26 @@ else if (msg.message.startsWith('[audio]')) {
 }
 
 msgDiv.innerHTML = `
+    <div class="msg-menu-btn" onclick="toggleMenu(${msg.id})">⋮</div>
+
+    <div class="msg-menu" id="menu-${msg.id}" style="display:none;">
+        <div onclick="replyMessage(${msg.id})">💬 Reply</div>
+        <div onclick="reactMessage(${msg.id}, '❤️')">❤️ Love</div>
+<div onclick="reactMessage(${msg.id}, '😂')">😂 Haha</div>
+<div onclick="reactMessage(${msg.id}, '👍')">👍 Like</div>
+        <div onclick="deleteMessage(${msg.id})">🗑 Delete</div>
+    </div>
+
     <b>${msg.sender}</b><br>
+${replyHtml}
+<div class="message-text">
     ${messageContent}
+</div>
+
     <div class="time">
         ${msg.sender === myUsername ? ticks : ''}
     </div>
 `;
-msgDiv.onclick = function() {
-    replyMessage = msg.message;
-
-    document.getElementById('replyBox').style.display = 'block';
-    document.getElementById('replyText').innerText =
-        "Reply: " + msg.message;
-};
                         document.getElementById('messages')
                             .appendChild(msgDiv);
                     });
@@ -536,10 +737,15 @@ msgDiv.onclick = function() {
     });
 
     emojiBtn.addEventListener('click', function() {
-    if (emojiPicker.style.display === 'none' || emojiPicker.style.display === '') {
+    if (
+        emojiPicker.style.display === 'none' ||
+        emojiPicker.style.display === ''
+    ) {
         emojiPicker.style.display = 'block';
+        document.body.classList.add('emoji-picker-open');
     } else {
         emojiPicker.style.display = 'none';
+        document.body.classList.remove('emoji-picker-open');
     }
 });
 
@@ -547,22 +753,30 @@ msgDiv.onclick = function() {
     fetch(`/last-messages/${myUsername}`)
 .then(res => res.json())
 .then(lastMessages => {
-    lastMessages.forEach(msg => {xxx 
-        const otherUser =
+lastMessages.reverse().forEach(msg => {
+            const otherUser =
             msg.sender === myUsername
             ? msg.receiver
             : msg.sender;
+            moveContactToTop(otherUser);
 
         const preview =
             document.getElementById(`preview-${otherUser}`);
 
         if (preview) {
-            if (msg.message.startsWith('[image]')) {
-                preview.innerText = "📷 Photo";
-            } else {
-                preview.innerText = msg.message;
-            }
-        }
+    let previewText = msg.message;
+
+    if (previewText.startsWith('[image]')) {
+        preview.innerText = "📷 Photo";
+    }
+    else if (previewText.startsWith('[audio]')) {
+        preview.innerText = "🎤 Voice Note";
+    }
+    else {
+        previewText = previewText.replace(/\[reply\].*?\[\/reply\]/, '');
+        preview.innerText = previewText;
+    }
+}
     });
 });
 
@@ -601,9 +815,123 @@ document.getElementById('message')
         sendMessage();
     }
 });
+function replyMessage(id) {
+    const msgBox = document.querySelector(
+        `[data-message-id="${id}"]`
+    );
+
+    if (!msgBox) return;
+
+    let text = '';
+
+const img = msgBox.querySelector('img');
+const audio = msgBox.querySelector('audio');
+const messageText = msgBox.querySelector('.message-text');
+
+if (img) {
+    text = '📷 Photo';
+}
+else if (audio) {
+    text = '🎤 Voice Note';
+}
+else {
+    text = messageText
+        ? messageText.innerText
+        : msgBox.innerText;
+}
+
+    replyData = text;
+
+    document.getElementById('replyBox').style.display = 'block';
+   document.getElementById('replyText').innerText = text;
+}
+function acceptCall() {
+    if (callStarted) return; // cegah klik 2x
+    callStarted = true;
+
+    socket.emit('accept_call', {
+        caller: window.currentCaller
+    });
+
+    callText.innerText = 'Call Connected';
+
+    const acceptBtn = document.getElementById('acceptCallBtn');
+    acceptBtn.style.display = 'none';
+
+    clearInterval(callInterval);
+
+    callSeconds = 0;
+
+    callInterval = setInterval(() => {
+        callSeconds++;
+
+        const minutes = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const seconds = String(callSeconds % 60).padStart(2, '0');
+
+        document.getElementById('callTimer').innerText =
+            `${minutes}:${seconds}`;
+    }, 1000);
+}
+function endCall() {
+    callStarted = false;
+    clearInterval(callInterval);
+
+    callPopup.style.display = 'none';
+    document.getElementById('callTimer').innerText = "00:00";
+
+    if (selectedUser) {
+        socket.emit('end_call', {
+            receiver: selectedUser
+        });
+    }
+}
+function reactMessage(id, emoji) {
+     console.log("REACT:", id, emoji);
+
+    socket.emit('send_reaction', {
+        messageId: id,
+        emoji: emoji
+    });
+}
+async function deleteMessage(id) {
+    const res = await fetch(`/delete-message/${id}`, {
+        method: 'DELETE'
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        document
+            .querySelector(`[data-message-id="${id}"]`)
+            ?.remove();
+    }
+}
+function toggleMenu(id) {
+    const menu = document.getElementById(`menu-${id}`);
+
+    if (menu.style.display === "block") {
+        menu.style.display = "none";
+    } else {
+        document.querySelectorAll('.msg-menu').forEach(m => {
+            m.style.display = "none";
+        });
+
+        menu.style.display = "block";
+    }
+}
+function moveContactToTop(username) {
+    const contactList = document.getElementById('contactList');
+    const contact = document.querySelector(
+        `.contact[data-username="${username}"]`
+    );
+
+    if (contact) {
+        contactList.prepend(contact);
+    }
+}
 
 function cancelReply() {
-    replyMessage = null;
+    replyData = null;
     document.getElementById('replyBox').style.display = 'none';
 }
 // kirim pesan
@@ -621,9 +949,9 @@ function sendMessage() {
     socket.emit('send_message', {
         sender: myUsername,
         receiver: selectedUser,
-        message: replyMessage
-    ? `[reply]${replyMessage}[/reply]${msg}`
-    : msg
+        message: replyData
+? `[reply]${replyData}[/reply]${msg}`
+: msg
     });
 
     document.getElementById('message').value = '';
@@ -632,6 +960,54 @@ function sendMessage() {
 }
 
 // receive private message
+let callSeconds = 0;
+let callInterval;
+let callStarted = false;
+
+socket.on('call_accepted', () => {
+    clearInterval(callInterval);
+callStarted = true;
+    callText.innerText = 'Call Connected';
+
+    callSeconds = 0;
+
+    callInterval = setInterval(() => {
+        callSeconds++;
+
+        const minutes = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const seconds = String(callSeconds % 60).padStart(2, '0');
+
+        document.getElementById('callTimer').innerText =
+            `${minutes}:${seconds}`;
+    }, 1000);
+});
+socket.on('call_ended', () => {
+    clearInterval(callInterval);
+    callPopup.style.display = 'none';
+    document.getElementById('callTimer').innerText = "00:00";
+    alert('Call ended');
+});
+socket.on('receive_reaction', function(data) {
+    const msg = document.querySelector(
+        `[data-message-id="${data.messageId}"]`
+    );
+
+    if (!msg) return;
+
+    let react = msg.querySelector('.reaction');
+
+    if (!react) {
+        react = document.createElement('div');
+        react.className = 'reaction';
+        react.style.marginTop = "5px";
+        msg.appendChild(react);
+    }
+
+    react.innerText = data.emoji;
+});
+socket.onAny((event, ...args) => {
+    console.log("EVENT MASUK:", event, args);
+});
 socket.on('online_users', (users) => {
     currentOnlineUsers = users;
 
@@ -659,6 +1035,16 @@ socket.on('online_users', (users) => {
         status.style.color = "gray";
     });
 }
+    }
+});
+document.addEventListener('click', function(e) {
+    if (
+        !e.target.closest('.msg-menu') &&
+        !e.target.closest('.msg-menu-btn')
+    ) {
+        document.querySelectorAll('.msg-menu').forEach(menu => {
+            menu.style.display = 'none';
+        });
     }
 });
 
@@ -694,12 +1080,14 @@ document.getElementById('imageInput')
     this.value = '';
 });
 socket.on('receive_message', function(data) {
-    console.log("MESSAGE:", data);
 
+    console.log("MESSAGE:", data);
     const otherUser =
-        data.sender === myUsername
-        ? data.receiver
-        : data.sender;
+    data.sender === myUsername
+    ? data.receiver
+    : data.sender;
+
+moveContactToTop(otherUser);
 
     // update preview SELALU
     const preview =
@@ -712,7 +1100,11 @@ if (preview) {
 else if (data.message.startsWith('[audio]')) {
     preview.innerText = "🎤 Voice Note";   
     } else {
-        preview.innerText = data.message;
+        let previewText = data.message;
+
+previewText = previewText.replace(/\[reply\].*?\[\/reply\]/, '');
+
+preview.innerText = previewText;
     }
 }
 
@@ -769,17 +1161,42 @@ else if (data.message.startsWith('[audio]')) {
         }
     }
 
-    let messageContent = data.message;
+let messageContent = data.message;
+let replyHtml = '';
 
-if (data.message.startsWith('[image]')) {
-    const imageUrl = data.message.replace('[image]', '');
+// cek reply
+const replyMatch = messageContent.match(/\[reply\](.*?)\[\/reply\]/);
+
+if (replyMatch) {
+    replyHtml = `
+        <div style="
+            background:#e9edef;
+            padding:5px;
+            border-left:4px solid #00a884;
+            margin-bottom:5px;
+            border-radius:5px;
+            font-size:12px;
+        ">
+            ${replyMatch[1]}
+        </div>
+    `;
+
+    messageContent =
+        messageContent.replace(/\[reply\].*?\[\/reply\]/, '');
+}
+
+// cek image
+if (messageContent.startsWith('[image]')) {
+    const imageUrl = messageContent.replace('[image]', '');
     messageContent = `
         <img src="${imageUrl}"
              style="max-width:200px;border-radius:10px;">
     `;
 }
-else if (data.message.startsWith('[audio]')) {
-    const audioUrl = data.message.replace('[audio]', '');
+
+// cek audio
+else if (messageContent.startsWith('[audio]')) {
+    const audioUrl = messageContent.replace('[audio]', '');
     messageContent = `
         <audio controls>
             <source src="${audioUrl}" type="audio/webm">
@@ -788,19 +1205,25 @@ else if (data.message.startsWith('[audio]')) {
 }
 
 div.innerHTML = `
-    <b>${data.sender}</b><br>
+<b>${data.sender}</b><br>
+${replyHtml}
+<div class="message-text">
     ${messageContent}
+</div>
+    <div class="msg-menu-btn" onclick="toggleMenu(${data.id})">⋮</div>
+
+    <div class="msg-menu" id="menu-${data.id}" style="display:none;">
+        <div onclick="replyMessage(${data.id})">💬 Reply</div>
+        <div onclick="reactMessage(${data.id}, '❤️')">❤️ Love</div>
+<div onclick="reactMessage(${data.id}, '😂')">😂 Haha</div>
+<div onclick="reactMessage(${data.id}, '👍')">👍 Like</div>
+        <div onclick="deleteMessage(${data.id})">🗑 Delete</div>
+    </div>
+
     <div class="time">
         ${ticks}
     </div>
 `;
-div.onclick = function() {
-    replyMessage = data.message;
-
-    document.getElementById('replyBox').style.display = 'block';
-    document.getElementById('replyText').innerText =
-        "Reply: " + data.message;
-};
     document.getElementById('messages').appendChild(div);
 
     const messages = document.getElementById('messages');
@@ -817,27 +1240,43 @@ socket.on('messages_read', (data) => {
         });
 });
 
-socket.on('message_deleted', (data) => {
+socket.on('message_deleted', async (data) => {
+    let deletedMsg = null;
+
     document.querySelectorAll('.message').forEach(msg => {
         if (msg.dataset.messageId == data.id) {
+            deletedMsg = msg;
             msg.remove();
         }
     });
-});
 
-document.querySelectorAll('.emoji').forEach(emoji => {
-    emoji.addEventListener('click', function() {
-        messageInput.value += this.innerText;
-        messageInput.focus();
-    });
-});
+    // update preview kontak
+    if (selectedUser) {
+        const res = await fetch(`/messages/${myUsername}/${selectedUser}`);
+        const messages = await res.json();
 
-document.addEventListener('click', function(e) {
-    if (
-        !emojiPicker.contains(e.target) &&
-        e.target !== emojiBtn
-    ) {
-        emojiPicker.style.display = 'none';
+        const preview =
+            document.getElementById(`preview-${selectedUser}`);
+
+        if (!preview) return;
+
+        if (messages.length === 0) {
+            preview.innerText = 'Belum ada chat';
+            return;
+        }
+
+        const lastMsg = messages[messages.length - 1].message;
+
+        if (lastMsg.startsWith('[image]')) {
+            preview.innerText = '📷 Photo';
+        }
+        else if (lastMsg.startsWith('[audio]')) {
+            preview.innerText = '🎤 Voice Note';
+        }
+        else {
+            preview.innerText =
+                lastMsg.replace(/\[reply\].*?\[\/reply\]/, '');
+        }
     }
 });
 socket.on('show_typing', (data) => {
